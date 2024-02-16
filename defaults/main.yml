@@ -1,0 +1,11 @@
+github_proxy_port: "8081"
+github_proxy_proto: "http"
+github_proxy_ip: "192.168.123.180"
+github_proxy_path: "/repository/raw-github"
+
+sem_pg_pwd: "semaphore"
+sem_conf_path: "/home/semaphore/.config/semaphore"
+sem_playbook_path: "/media/data/semaphore"
+sem_ui_admin_user: "admin"
+sem_ui_admin_pwd: "ChangeMe"
+sem_ui_admin_mail: "admin@example.com"

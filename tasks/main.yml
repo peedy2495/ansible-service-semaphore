@@ -1,0 +1,131 @@
+- name: basic software from native sources
+  apt:
+    update_cache: true
+    install_recommends: true
+    pkg:
+    - python3
+    - python3-pip
+    - python3-venv
+    - python3-psycopg2
+    - python3-pexpect
+    - fonts-jetbrains-mono
+    - git
+    - git-lfs
+    - ldap-utils
+    - postgresql
+    - postgresql-client
+    - postgresql-contrib
+  tags:
+    - misc-from-native
+
+- name: install ansible from ppa
+  import_tasks: ppa-ansible-9.yml
+  tags:
+    - ppa-ansible-9
+
+- name: Ensure group "semaphore" exists with correct gid
+  ansible.builtin.group:
+    name: semaphore
+    state: present
+    gid: 222
+
+- name: Add the user 'semaphore' with a specific uid and a primary group of 'semaphore'
+  ansible.builtin.user:
+    name: semaphore
+    comment: semahore service account
+    uid: 222
+    group: semaphore
+
+- name: install semaphore - determine latest tag @GitHub
+  uri:
+   url: http://ubuntu-proxy:8081/repository/raw-api.github/repos/ansible-semaphore/semaphore/releases/latest
+   return_content: true
+   headers:
+     Content-Type: "Accept: application/vnd.github.v3+json"
+   body_format: json
+  register: semaphore_latest
+
+- name: install semaphore - install package
+  loop: "{{ semaphore_latest.json.assets }}"
+  loop_control:
+    label: "{{ item.name }}"
+  apt:
+    deb: '{{github_proxy_proto}}://{{github_proxy_ip}}:{{github_proxy_port}}{{github_proxy_path}}{{ item.browser_download_url | urlsplit("path") }}'
+  when: "'_linux_amd64.deb' in item.name"
+  register: sem_installation
+
+- name: postgres - creating semaphore database
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_db:
+    name: semaphore
+    template: template0
+    state: present
+  when: sem_installation is changed
+
+- name: postgres - creating semaphore user
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_user:
+    db: "semaphore"
+    name: "semaphore_user"
+    password: "{{ sem_pg_pwd }}"
+    role_attr_flags: "NOSUPERUSER,NOCREATEDB,NOCREATEROLE"
+    encrypted: yes
+    state: present
+  when: sem_installation is changed
+
+- name: postgres - add privileges 
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_privs:
+    db: semaphore
+    privs: ALL
+    type: database
+    role: semaphore_user
+    state: present
+  when: sem_installation is changed
+
+- name: semaphore configuration
+  become: true
+  become_user: semaphore
+  ansible.builtin.expect:
+    command: semaphore setup
+    echo: true
+    timeout: "10"
+    responses:
+      (.default.1.*): "3\n"
+      (db.Hostname.*): "\n"
+      (db.User.*): "semaphore_user"
+      (db.Password.*): "{{ sem_pg_pwd }}\n"
+      (db.Name.*): "semaphore\n"
+      (Playbook.path.*): "{{ sem_playbook_path }}\n"
+      (Public.URL.*): "\n"
+      (Enable.email.alerts.*): "\n"
+      (Enable.telegram.alerts.*): "\n"
+      (Enable.slack.alerts.*): "\n"
+      (Enable.LDAP.authentication.*): "\n"
+      (Config.output.directory.*): "{{ sem_conf_path }}\n"
+      (Username): "{{ sem_ui_admin_user }}\n"
+      (Email): "{{ sem_ui_admin_mail }}\n"
+      (Your.name): "Semaphore admin\n"
+      (Password): "{{ sem_ui_admin_pwd }}\n"
+  when: sem_installation is changed
+
+- name: deploy semaphore systemd service
+  template:
+    src: semaphore.service.j2
+    dest: /etc/systemd/system/semaphore.service
+    owner: root
+    group: root
+    mode: 0664
+  when: sem_installation is changed
+
+- name: starting semaphore service
+  systemd:
+    name: semaphore.service
+    daemon_reload: true
+    enabled: true
+    state: started
+  when: sem_installation is changed
+
