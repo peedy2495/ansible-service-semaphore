@@ -1,7 +1,7 @@
 - name: install ansible 9 from ppa
   block:
     - name: ppa-ansible 9 - deploy gpg key
-      blockinfile:
+      ansible.builtin.blockinfile:
         path: /etc/apt/trusted.gpg.d/ppa-ansible-6.asc
         create: true
         block: |
@@ -38,14 +38,14 @@
         mode: 644
 
     - name: ppa-ansible 9 - create repository definition
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/save/apt/sources.list.d/ppa-ansible-9.list
         search_string: 'deb'
         line: 'deb http://ubuntu-proxy:8081/repository/ubuntu-jammy-ppa-ansible-9 jammy main'
         create: true
 
     - name: ppa-ansible 9 - install
-      apt:
+      ansible.builtin.apt:
         update_cache: true
         install_recommends: true
         state: latest
@@ -55,6 +55,6 @@
           - ansible-lint
 
     - name: ppa-ansible 9 - cleanup
-      apt:
+      ansible.builtin.apt:
         autoremove: true
         autoclean: true

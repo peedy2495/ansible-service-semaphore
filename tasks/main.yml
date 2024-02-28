@@ -1,5 +1,5 @@
 - name: basic software from native sources
-  apt:
+  ansible.builtin.apt:
     update_cache: true
     install_recommends: true
     pkg:
@@ -19,7 +19,7 @@
     - misc-from-native
 
 - name: install ansible from ppa
-  import_tasks: ppa-ansible-9.yml
+  ansible.builtin.import_tasks: ppa-ansible-9.yml
   tags:
     - ppa-ansible-9
 
@@ -37,7 +37,7 @@
     group: semaphore
 
 - name: install semaphore - determine latest tag @GitHub
-  uri:
+  ansible.builtin.uri:
    url: http://ubuntu-proxy:8081/repository/raw-api.github/repos/ansible-semaphore/semaphore/releases/latest
    return_content: true
    headers:
@@ -49,7 +49,7 @@
   loop: "{{ semaphore_latest.json.assets }}"
   loop_control:
     label: "{{ item.name }}"
-  apt:
+  ansible.builtin.apt:
     deb: '{{github_proxy_proto}}://{{github_proxy_ip}}:{{github_proxy_port}}{{github_proxy_path}}{{ item.browser_download_url | urlsplit("path") }}'
   when: "'_linux_amd64.deb' in item.name"
   register: sem_installation
@@ -59,7 +59,7 @@
   become_user: postgres
   community.postgresql.postgresql_db:
     name: semaphore
-    template: template0
+    ansible.builtin.template: template0
     state: present
   when: sem_installation is changed
 
@@ -90,7 +90,7 @@
   become: true
   become_user: semaphore
   ansible.builtin.expect:
-    command: semaphore setup
+    ansible.builtin.command: semaphore setup
     echo: true
     timeout: "10"
     responses:
@@ -113,7 +113,7 @@
   when: sem_installation is changed
 
 - name: deploy semaphore systemd service
-  template:
+  ansible.builtin.template:
     src: semaphore.service.j2
     dest: /etc/systemd/system/semaphore.service
     owner: root
@@ -122,7 +122,7 @@
   when: sem_installation is changed
 
 - name: starting semaphore service
-  systemd:
+  ansible.builtin.systemd:
     name: semaphore.service
     daemon_reload: true
     enabled: true
