@@ -41,7 +41,7 @@
       ansible.builtin.lineinfile:
         path: /etc/save/apt/sources.list.d/ppa-ansible-9.list
         search_string: 'deb'
-        line: 'deb http://ubuntu-proxy:8081/repository/ubuntu-jammy-ppa-ansible-9 jammy main'
+        line: 'deb {{ nexus_proto }}://{{ nexus_host }}:{{ nexus_port }}/repository/ubuntu-{{ ansible_lsb.codename }}-ppa-ansible-9 {{ ansible_lsb.codename }} main'
         create: true
 
     - name: ppa-ansible 9 - install
