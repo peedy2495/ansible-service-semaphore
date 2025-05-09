@@ -38,7 +38,7 @@
 
 - name: install semaphore - determine latest tag @GitHub
   ansible.builtin.uri:
-   url: http://ubuntu-proxy:8081/repository/raw-api.github/repos/ansible-semaphore/semaphore/releases/latest
+   url: http://{{ nexus_proto }}://{{ nexus_host }}:{{ nexus_port }}/repository/raw-api.github/repos/ansible-semaphore/semaphore/releases/latest
    return_content: true
    headers:
      Content-Type: "Accept: application/vnd.github.v3+json"
